@@ -12,16 +12,11 @@ goal_pose = PoseStamped()
 drone_state = State()
 drone_pose = PoseStamped()
 
-def chegou(goal, actual):
-    if (abs(goal.pose.position.x - actual.pose.position.x) < 0.05) and (abs(goal.pose.position.y - actual.pose.position.y) < 0.05) and (abs(goal.pose.position.z - actual.pose.position.z) < 0.05):
-        return True
-    else:
-        return False
 
 def drone_takeoff(height, duration):
-    rate = rospy.Rate(20) # 10hz
+    rate = rospy.Rate(100) # 10hz
     velocity = 0.3
-    part = velocity/20.0
+    part = velocity/100.0
 
     ############## Funcoes de Callback ########
     def state_callback(state_data):
@@ -35,7 +30,6 @@ def drone_takeoff(height, duration):
         drone_pose.pose.position.x = local.pose.position.x
         drone_pose.pose.position.y = local.pose.position.y
         drone_pose.pose.position.z = local.pose.position.z
-
 
     ############### Publishers ###############
     local_position_pub = rospy.Publisher('/mavros/setpoint_position/local', PoseStamped, queue_size = 100)
@@ -87,7 +81,6 @@ def drone_takeoff(height, duration):
         if drone_state.armed == True:
             rospy.loginfo("DRONE ARMED")
 
-        #if not chegou(drone_pose, goal_pose)
         if t < height:
             rospy.logwarn('TAKING OFF AT ' + str(velocity) + ' m/s')
             set_position(0, 0, t)

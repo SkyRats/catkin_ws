@@ -3,16 +3,13 @@
 import rospy
 import smach
 import smach_ros
-import takeoff
-import RTL
-from RTL import drone_RTL
-from takeoff import drone_takeoff
-from disarm import drone_disarm
-from rc_safety import safety_thread
+from MAV import MAV
 import threading
 import time
+from align_reference import adjust_position
+from std_msgs.msg import Bool
 
-init_time = time.time()
+mav = MAV()
 
 # define state Takeoff
 class Takeoff(smach.State):
@@ -21,10 +18,14 @@ class Takeoff(smach.State):
         self.counter = 0
 
     def execute(self, userdata):
-        global init_time
+        global mav
         rospy.loginfo('Executing state Takeoff')
-        result = takeoff.drone_takeoff(1.5, 8)
-        init_time = time.time()
+        mav.set_position(0,0,0)
+        for i in range(300):
+            mav.local_position_pub.publish(mav.goal_pose)
+            mav.rate.sleep()
+        rospy.loginfo("SETUP COMPLETE")
+        result = mav.takeoff(3)
         return result
 
 
@@ -34,20 +35,20 @@ class ReturnToLand(smach.State):
         smach.State.__init__(self, outcomes=['succeeded'])
 
     def execute(self, userdata):
-        global init_time
-        transition_time = time.time() - init_time
-        rospy.logwarn('Time in transition: ' + str(transition_time))
-        RTL.drone_RTL()
+        global mav
         rospy.loginfo('Executing state RTL')
-        drone_disarm()
+        mav.RTL()
+        mav.arm(False)
         return 'succeeded'
 
 
-rospy.init_node('drone_state_machine', anonymous = True)
-rate = rospy.Rate(60) # 10hz
+#rospy.init_node('drone_state_machine', anonymous = True)
+#rate = rospy.Rate(60) # 10hz
 
-def main():
+def run():
     # Create a SMACH state machine
+    #rospy.init_node("State Machine")
+    mav = MAV()
     sm = smach.StateMachine(outcomes=['Mission executed successfully!'])
     # Open the container
     with sm:
@@ -62,4 +63,4 @@ def main():
     print outcome
 
 if __name__ == '__main__':
-    main()
+    run()

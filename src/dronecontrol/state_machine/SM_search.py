@@ -11,8 +11,8 @@ from disarm import drone_disarm
 from rc_safety import safety_thread
 import threading
 import time
+from search import drone_search
 
-init_time = time.time()
 
 # define state Takeoff
 class Takeoff(smach.State):
@@ -21,11 +21,18 @@ class Takeoff(smach.State):
         self.counter = 0
 
     def execute(self, userdata):
-        global init_time
         rospy.loginfo('Executing state Takeoff')
-        result = takeoff.drone_takeoff(1.5, 8)
-        init_time = time.time()
-        return result
+        return takeoff.drone_takeoff(1.5, 8)
+
+
+class Search(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['done'])
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state Search')
+        drone_search((0,0), (5,5), 1, 0.5)
+        return 'done'
 
 
  # define state RTL
@@ -34,9 +41,6 @@ class ReturnToLand(smach.State):
         smach.State.__init__(self, outcomes=['succeeded'])
 
     def execute(self, userdata):
-        global init_time
-        transition_time = time.time() - init_time
-        rospy.logwarn('Time in transition: ' + str(transition_time))
         RTL.drone_RTL()
         rospy.loginfo('Executing state RTL')
         drone_disarm()
@@ -44,7 +48,7 @@ class ReturnToLand(smach.State):
 
 
 rospy.init_node('drone_state_machine', anonymous = True)
-rate = rospy.Rate(60) # 10hz
+rate = rospy.Rate(20) # 10hz
 
 def main():
     # Create a SMACH state machine
@@ -53,7 +57,9 @@ def main():
     with sm:
         # Add states to the container
         smach.StateMachine.add('TAKEOFF', Takeoff(),
-                                transitions={'done':'RTL', 'aborted':'Mission executed successfully!'})
+                                transitions={'done':'SEARCH', 'aborted':'Mission executed successfully!'})
+        smach.StateMachine.add('SEARCH', Search(),
+                                transitions={'done':'RTL'})
         smach.StateMachine.add('RTL', ReturnToLand(),
                                 transitions={'succeeded':'Mission executed successfully!'})
 

@@ -16,17 +16,6 @@ final_position.pose.position.x = 0
 final_position.pose.position.y = 0
 final_position.pose.position.y = 0
 
-def chegou(goal, actual):
-    if (abs(goal.pose.position.x - actual.pose.position.x) < 0.1) and (abs(goal.pose.position.y - actual.pose.position.y) < 0.1) and (abs(goal.pose.position.z - actual.pose.position.z) < 0.10):
-        return True
-    else:
-        return False
-
-
-"""
-Function that brings the drone down to the (0,0,0) position and disarms it
-
-"""
 
 def chegou(goal, actual):
     if (abs(goal.pose.position.x - actual.pose.position.x) < 0.1) and (abs(goal.pose.position.y - actual.pose.position.y) < 0.1) and (abs(goal.pose.position.z - actual.pose.position.z) < 0.10):
@@ -36,14 +25,15 @@ def chegou(goal, actual):
 
 
 """
-Function that brings the drone down to the (0,0,0) position and disarms it
+Function that brings the drone down to the (0,0,0) position
 
 """
 
 def drone_RTL():
-    rate = rospy.Rate(20)
+    init_time = time.time()
+    rate = rospy.Rate(100)
     velocity = 0.3
-    ds = velocity/20.0
+    ds = velocity/100.0
     ############## Funcoes de Callback ########
     def local_callback(local):
         global drone_pose
@@ -70,9 +60,12 @@ def drone_RTL():
         local_position_pub.publish(goal_pose)
 
     for i in range(100):
+        set_position(0,0,0)
         rate.sleep()
 
     rospy.loginfo("[ROS] SETUP CONCLUIDO")
+    transition_time = time.time() - init_time
+    rospy.logwarn('Time in setup: ' + str(transition_time))
     rate.sleep()
     height = drone_pose.pose.position.z
     rospy.loginfo('Position: (' + str(drone_pose.pose.position.x) + ', ' + str(drone_pose.pose.position.y) + ', ' + str(drone_pose.pose.position.z) + ')')
@@ -90,10 +83,10 @@ def drone_RTL():
         rate.sleep()
 
     t=0
-    set_position(0,0,0)
+    set_position(0,0,height-ds)
     rate.sleep()
 
-    while not drone_pose.pose.position.z < 0.1:
+    while not drone_pose.pose.position.z < 0.3:
         rospy.loginfo('Executing State RTL')
 
         rospy.loginfo('Height: ' + str(abs(drone_pose.pose.position.z)))
@@ -114,9 +107,15 @@ def drone_RTL():
             rate.sleep()
 
     print("\nCHEGUEEEI\n")
-    # rospy.logwarn("DESARMANDO DRONE")
-    # arm(False)
+    cmd = 0
+    while not cmd == 1:
+        cmd = input("Posso desarmar o drone? (1 para sim, 0 para nao)\n")
+        set_position(0,0,0)
+        rate.sleep()
+    rospy.logwarn("DESARMANDO DRONE")
+    arm(False)
     return "succeeded"
 
 if __name__ == "__main__":
+    rospy.init_node("RTL")
     drone_RTL()
